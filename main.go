@@ -6,68 +6,57 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"time"
 )
 
-// Info 是每个子视频的元数据
 type Info struct {
 	Title    string `json:"Title"`
 	PartName string `json:"PartName"`
-	PartNo   string `json:"PartNo"` // fix video name order problem
+	PartNo   string `json:"PartNo"`
 }
 
 func main() {
-	// 解析哔哩哔哩下载目录绝对路径
 	downloaddir, err := filepath.Abs(".")
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return
 	}
-	// 如果 info 文件同目录有 flv 文件则整理
 	filepath.Walk(downloaddir, func(path string, info os.FileInfo, err error) error {
 		if filepath.Ext(path) == ".info" {
+			videos, ext := []string{}, ""
 			dir := filepath.Dir(path)
-			videosfile, ext := []string{}, ""
-			flvfile, err := filepath.Glob(filepath.Join(dir, "*.flv"))
-			if len(flvfile) != 0 && err == nil {
-				videosfile = flvfile
-				ext = ".flv"
+			flvfiles, err := filepath.Glob(filepath.Join(dir, "*.flv"))
+			if len(flvfiles) != 0 && err == nil {
+				videos, ext = flvfiles, ".flv"
 			}
-			mp4file, err := filepath.Glob(filepath.Join(dir, "*.mp4"))
-			if len(mp4file) != 0 && err == nil {
-				videosfile = mp4file
-				ext = ".mp4"
+			mp4files, err := filepath.Glob(filepath.Join(dir, "*.mp4"))
+			if len(mp4files) != 0 && err == nil {
+				videos, ext = mp4files, ".mp4"
 			}
-			if len(videosfile) == 0 || err != nil || ext == "" {
+			if len(videos) == 0 || ext == "" {
 				return nil
 			}
 			infofile, err := ioutil.ReadFile(path)
 			if err != nil {
 				return nil
 			}
-			infostruct := Info{}
-			err = json.Unmarshal(infofile, &infostruct)
+			info := Info{}
+			err = json.Unmarshal(infofile, &info)
 			if err != nil {
 				return nil
 			}
-			if infostruct.PartName == "" {
-				infostruct.PartName = infostruct.Title
+			if info.PartName == "" {
+				info.PartName = info.Title
 			}
-			targetdir := filepath.Join(downloaddir, infostruct.Title)
+			targetdir := filepath.Join(downloaddir, info.Title)
 			_, err = os.Stat(targetdir)
-			if err != nil {
-				if os.IsNotExist(err) {
-					fmt.Println("mkdir", targetdir)
-					os.Mkdir(targetdir, os.ModeDir)
-				}
+			if os.IsNotExist(err) {
+				fmt.Println("mkdir", targetdir)
+				os.Mkdir(targetdir, os.ModeDir)
 			}
-			oldpath := videosfile[0]
-			newpath := filepath.Join(targetdir, fmt.Sprintf("%s-%s.%s", infostruct.PartNo, infostruct.PartName, ext))
+			oldpath := videos[0]
+			newpath := filepath.Join(targetdir, fmt.Sprintf("%s-%s.%s", info.PartNo, info.PartName, ext))
 			fmt.Println(oldpath, "--->", newpath)
 			os.Rename(oldpath, newpath)
 		}
 		return nil
 	})
-	fmt.Println("done!")
-	time.Sleep(5 * time.Second)
 }
