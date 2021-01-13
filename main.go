@@ -6,12 +6,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // Info 是每个子视频的元数据
 type Info struct {
-	Title     string `json:"Title"`
-	PartName  string `json:"PartName"`
+	Title    string `json:"Title"`
+	PartName string `json:"PartName"`
+	PartNo   string `json:"PartNo"` // fix video name order problem
 }
 
 func main() {
@@ -27,12 +29,12 @@ func main() {
 			dir := filepath.Dir(path)
 			videosfile, ext := []string{}, ""
 			flvfile, err := filepath.Glob(filepath.Join(dir, "*.flv"))
-			if len(flvfile) !=0 && err == nil {
+			if len(flvfile) != 0 && err == nil {
 				videosfile = flvfile
 				ext = ".flv"
 			}
 			mp4file, err := filepath.Glob(filepath.Join(dir, "*.mp4"))
-			if len(mp4file) !=0 && err == nil {
+			if len(mp4file) != 0 && err == nil {
 				videosfile = mp4file
 				ext = ".mp4"
 			}
@@ -55,13 +57,17 @@ func main() {
 			_, err = os.Stat(targetdir)
 			if err != nil {
 				if os.IsNotExist(err) {
+					fmt.Println("mkdir", targetdir)
 					os.Mkdir(targetdir, os.ModeDir)
 				}
 			}
 			oldpath := videosfile[0]
-			newpath := filepath.Join(targetdir, infostruct.PartName + ext)
+			newpath := filepath.Join(targetdir, fmt.Sprintf("%s-%s.%s", infostruct.PartNo, infostruct.PartName, ext))
+			fmt.Println(oldpath, "--->", newpath)
 			os.Rename(oldpath, newpath)
 		}
 		return nil
 	})
+	fmt.Println("done!")
+	time.Sleep(5 * time.Second)
 }
